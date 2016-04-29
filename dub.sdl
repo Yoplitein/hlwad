@@ -1,0 +1,4 @@
+name "hlwad"
+description "Extraction and authoring tool for Half-Life WAD files."
+copyright "Copyright © 2016, Yoplitein"
+authors "Yoplitein"

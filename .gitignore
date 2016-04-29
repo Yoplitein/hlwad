@@ -1,0 +1,13 @@
+*.a
+*.dll
+*.exe
+*.lib
+*.o
+*.obj
+*.so
+*.sublime-*
+.dub
+/hlwad
+__dummy.html
+docs.json
+dub.selections.json
