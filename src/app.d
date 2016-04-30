@@ -75,7 +75,7 @@ Type unpack(Type)(const(ubyte[]) data)
         static if(isStaticArray!FieldType)
         {
             alias ElementType = typeof(mixin("result." ~ fieldName)[0]);
-            mixin("result." ~ fieldName) = cast(ElementType[])data[index .. index + FieldType.length];
+            mixin("result." ~ fieldName) = cast(ElementType[])data[index .. index + FieldType.length * ElementType.sizeof];
             index += FieldType.length;
         }
         else
