@@ -6,11 +6,14 @@ import std.array;
 import std.bitmanip;
 import std.conv;
 import std.getopt;
+import std.path;
 import std.range;
 import std.stdio;
 import std.string;
 import std.traits;
-static import std.file;
+import std.file: mkdir, exists, readFile = read;
+
+import imageformats;
 
 enum textureNameLength = 16;
 enum mipLevels = 4;
@@ -33,7 +36,7 @@ struct DirectoryEntry
     char[textureNameLength] name;
 }
 
-struct Texture
+struct TextureLump
 {
     char[textureNameLength] name;
     uint width;
@@ -43,7 +46,7 @@ struct Texture
 
 void main()
 {
-    auto data = cast(ubyte[])std.file.read("halflife.wad");
+    auto data = cast(ubyte[])readFile("halflife.wad");
     auto header = data.unpack!Header;
     
     if(header.magicNumber != "WAD3")
@@ -59,8 +62,53 @@ void main()
         files ~= unpack!DirectoryEntry(data[index .. $]);
     }
     
+    if(!"halflife".exists)
+        mkdir("halflife");
+    
+    int count;
+    
     foreach(file; files)
-        writeln(file.name.to!string.stripRight('\0'));
+    {
+        auto texture = unpack!TextureLump(data[file.offset .. $]);
+        
+        if(texture.width < 128)
+            continue;
+        
+        if(count++ > 10)
+            break;
+        
+        auto filename = file.name.to!string.stripRight('\0');
+        
+        writefln(
+            "extracting %16s => %sx%s (%s)",
+            filename,
+            texture.width,
+            texture.height,
+            texture.offsets,
+        );
+        
+        auto imageLength = texture.width * texture.height;
+        auto smallestMipmapLength = (texture.width / 16) * (texture.height / 16);
+        auto imageStart = file.offset + texture.offsets[0];
+        auto paletteStart = file.offset + texture.offsets[3] + smallestMipmapLength + 2;
+        auto image = data[imageStart .. imageStart + imageLength];
+        auto rawPalette = data[imageStart + paletteStart .. imageStart + paletteStart + 3 * 256];
+        auto palette = rawPalette.chunks(3).array;
+        uint[] output;
+        output.length = imageLength;
+        
+        foreach(index, colorIndex; image)
+        {
+            auto color = palette[colorIndex];
+            output[index] =
+                color[2] << 0 |
+                color[1] << 8 |
+                color[0] << 16
+            ;
+        }
+        
+        write_image("halflife/%s.png".format(filename), texture.width, texture.height, cast(ubyte[])output, ColFmt.RGB);
+    }
 }
 
 Type unpack(Type)(const(ubyte[]) data)
