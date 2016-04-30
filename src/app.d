@@ -88,26 +88,29 @@ void main()
         );
         
         auto imageLength = texture.width * texture.height;
-        auto smallestMipmapLength = (texture.width / 16) * (texture.height / 16);
+        auto smallestMipmapLength = (texture.width / 8) * (texture.height / 8);
         auto imageStart = file.offset + texture.offsets[0];
         auto paletteStart = file.offset + texture.offsets[3] + smallestMipmapLength + 2;
         auto image = data[imageStart .. imageStart + imageLength];
-        auto rawPalette = data[imageStart + paletteStart .. imageStart + paletteStart + 3 * 256];
-        auto palette = rawPalette.chunks(3).array;
+        enum paletteLength = 3 * 256;
+        auto palette = data[paletteStart .. paletteStart + paletteLength]
+            .chunks(3)
+            .map!(
+                c => c
+                    .chain([cast(ubyte)255])
+                    .retro
+                    .array
+                    .peek!uint
+            )
+            .array
+        ;
         uint[] output;
         output.length = imageLength;
         
         foreach(index, colorIndex; image)
-        {
-            auto color = palette[colorIndex];
-            output[index] =
-                color[2] << 0 |
-                color[1] << 8 |
-                color[0] << 16
-            ;
-        }
+            output[index] = palette[colorIndex];
         
-        write_image("halflife/%s.png".format(filename), texture.width, texture.height, cast(ubyte[])output, ColFmt.RGB);
+        write_image("halflife/%s.png".format(filename), texture.width, texture.height, cast(ubyte[])output, ColFmt.RGBA);
     }
 }
 
