@@ -26,7 +26,7 @@ struct WadFile
     private ubyte[] data;
     Header header;
     DirectoryEntry[] files;
-    TextureMipmaps[] newTextures;
+    PackedTexture[] newTextures;
     
     this(string filename)
     {
@@ -97,9 +97,15 @@ struct WadFile
         return result;
     }
     
-    void add(Texture texture)
+    void add(Texture texture, string name)
     {
-        TextureMipmaps result;
+        if(name.length > 16)
+            throw new Exception("Can't add texture `%s`: name is more than 16 chars".format(name));
+        
+        PackedTexture result;
+        result.width = texture.width;
+        result.height = texture.height;
+        result.name = name;
         uint[] pixels = cast(uint[])texture.pixels;
         uint[] uniqueColors = pixels
             .sort!()
@@ -108,7 +114,7 @@ struct WadFile
         ;
         
         if(uniqueColors.length > 256)
-            throw new Exception("Image has too many colors"); //TODO: quantization
+            throw new Exception("Texture `%s` has too many colors".format(name)); //TODO: quantization
         
         auto palette = uniqueColors
             .map!(c => c.nativeToLittleEndian.dup.take(3))
@@ -156,9 +162,9 @@ struct WadFile
         foreach(texture; newTextures)
         {
             TextureLump lump;
-            lump.name = "derp"; //FIXME
-            lump.width = -1; //FIXME
-            lump.height = -1; //FIXME
+            lump.name[0 .. texture.name.length] = texture.name;
+            lump.width = texture.width;
+            lump.height = texture.height;
             
             foreach(mipLevel; 0 .. mipLevels)
                 lump.offsets[mipLevel] =
@@ -172,7 +178,7 @@ struct WadFile
             file.offset = bufferIndex;
             file.type = typeMiptex;
             file.compressed = false;
-            file.name = "derp"; //FIXME
+            file.name[0 .. texture.name.length] = texture.name;
             
             buffer.put(lump.pack);
             
@@ -223,19 +229,22 @@ struct DirectoryEntry
     byte type;
     bool compressed;
     short unused;
-    char[textureNameLength] name;
+    char[textureNameLength] name = 0;
 }
 
 struct TextureLump
 {
-    char[textureNameLength] name;
+    char[textureNameLength] name = 0;
     uint width;
     uint height;
     uint[mipLevels] offsets;
 }
 
-struct TextureMipmaps
+struct PackedTexture
 {
+    uint width;
+    uint height;
+    string name;
     ubyte[][mipLevels] mipmaps;
     ubyte[paletteLength] palette;
 }
@@ -270,7 +279,7 @@ void main()
         auto img = read_image("%s/%s.png".format(wadName, filename), ColFmt.RGBA);
         auto texture = Texture(img.w, img.h, img.pixels);
         
-        wad.add(texture);
+        wad.add(texture, filename);
     }
     
     wad.write("test.wad");
