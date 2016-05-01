@@ -162,7 +162,7 @@ struct WadFile
         foreach(texture; newTextures)
         {
             TextureLump lump;
-            lump.name[0 .. texture.name.length] = texture.name;
+            lump.name[0 .. texture.name.length] = texture.name.toLower;
             lump.width = texture.width;
             lump.height = texture.height;
             
@@ -178,7 +178,7 @@ struct WadFile
             file.offset = bufferIndex;
             file.type = typeMiptex;
             file.compressed = false;
-            file.name[0 .. texture.name.length] = texture.name;
+            file.name[0 .. texture.name.length] = texture.name.toUpper;
             
             buffer.put(lump.pack);
             
