@@ -18,66 +18,46 @@ import imageformats;
 enum textureNameLength = 16;
 enum mipLevels = 4;
 
-struct Header
+struct WadFile
 {
-    char[4] magicNumber;
-    int fileCount;
-    int fileOffset;
-}
-
-struct DirectoryEntry
-{
-    int offset;
-    int diskSize;
-    int fullSize;
-    byte type;
-    bool compressed;
-    short unused;
-    char[textureNameLength] name;
-}
-
-struct TextureLump
-{
-    char[textureNameLength] name;
-    uint width;
-    uint height;
-    uint[mipLevels] offsets;
-}
-
-void main()
-{
-    auto data = cast(ubyte[])readFile("halflife.wad");
-    auto header = data.unpack!Header;
-    
-    if(header.magicNumber != "WAD3")
-        throw new Exception("Invalid wad");
-    
+    private ubyte[] data;
+    Header header;
     DirectoryEntry[] files;
     
-    files.reserve(header.fileCount);
-    
-    foreach(fileNum; 0 .. header.fileCount)
+    this(string filename)
     {
-        size_t index = header.fileOffset + fileNum * packedSize!DirectoryEntry;
-        files ~= unpack!DirectoryEntry(data[index .. $]);
+        data = cast(ubyte[])readFile("halflife.wad");
+        header = data.unpack!Header;
+        
+        if(header.magicNumber != "WAD3")
+            throw new Exception("Invalid wad");
+        
+        files.reserve(header.fileCount);
+    
+        foreach(fileNum; 0 .. header.fileCount)
+        {
+            size_t index = header.fileOffset + fileNum * packedSize!DirectoryEntry;
+            files ~= unpack!DirectoryEntry(data[index .. $]);
+        }
     }
     
-    if(!"halflife".exists)
-        mkdir("halflife");
-    
-    foreach(file; files)
+    DirectoryEntry findFile(string name)
     {
+        auto found = files.find!(x => x.name.ptr.fromStringz == name);
+        
+        if(found.empty)
+            throw new Exception("No such file: " ~ name);
+        
+        return found.front;
+    }
+    
+    Texture readTexture(DirectoryEntry file)
+    {
+        Texture result;
         auto texture = unpack!TextureLump(data[file.offset .. $]);
+        result.width = texture.width;
+        result.height = texture.height;
         auto filename = file.name.to!string.stripRight('\0');
-        
-        writefln(
-            "extracting %16s => %sx%s (%s)",
-            filename,
-            texture.width,
-            texture.height,
-            texture.offsets,
-        );
-        
         auto imageLength = texture.width * texture.height;
         auto smallestMipmapLength = (texture.width / 8) * (texture.height / 8);
         auto imageStart = file.offset + texture.offsets[0];
@@ -104,8 +84,56 @@ void main()
         foreach(index, colorIndex; image)
             output[index] = palette[colorIndex];
         
-        write_image("halflife/%s.png".format(filename), texture.width, texture.height, cast(ubyte[])output, ColFmt.RGBA);
+        result.pixels = cast(ubyte[])output;
+        
+        return result;
     }
+}
+
+struct Header
+{
+    char[4] magicNumber;
+    int fileCount;
+    int fileOffset;
+}
+
+struct DirectoryEntry
+{
+    int offset;
+    int diskSize;
+    int fullSize;
+    byte type;
+    bool compressed;
+    short unused;
+    char[textureNameLength] name;
+}
+
+struct TextureLump
+{
+    char[textureNameLength] name;
+    uint width;
+    uint height;
+    uint[mipLevels] offsets;
+}
+
+struct Texture
+{
+    uint width;
+    uint height;
+    ubyte[] pixels;
+}
+
+void main()
+{
+    auto wad = WadFile("halflife.wad");
+    
+    if(!"halflife".exists)
+        mkdir("halflife");
+    
+    auto filename = "{FENCE";
+    auto texture = wad.readTexture(wad.findFile(filename));
+    
+    write_image("halflife/%s.png".format(filename), texture.width, texture.height, texture.pixels, ColFmt.RGBA);
 }
 
 Type unpack(Type)(const(ubyte[]) data)
