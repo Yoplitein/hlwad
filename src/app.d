@@ -18,12 +18,14 @@ import imageformats;
 static immutable magicNumber = "WAD3";
 enum textureNameLength = 16;
 enum mipLevels = 4;
+enum paletteLength = 3 * 256;
 
 struct WadFile
 {
     private ubyte[] data;
     Header header;
     DirectoryEntry[] files;
+    TextureMipmaps[] newTextures;
     
     this(string filename)
     {
@@ -69,7 +71,6 @@ struct WadFile
         auto imageStart = file.offset + texture.offsets[0];
         auto paletteStart = file.offset + texture.offsets[3] + smallestMipmapLength + 2;
         auto image = data[imageStart .. imageStart + imageLength];
-        enum paletteLength = 3 * 256;
         auto palette = data[paletteStart .. paletteStart + paletteLength]
             .chunks(3)
             .map!(
@@ -97,7 +98,51 @@ struct WadFile
     
     void add(Texture texture)
     {
-        //TODO
+        TextureMipmaps result;
+        uint[] pixels = cast(uint[])texture.pixels;
+        uint[] uniqueColors = pixels
+            .sort!()
+            .uniq
+            .array
+        ;
+        
+        if(uniqueColors.length > 256)
+            throw new Exception("Image has too many colors"); //TODO: quantization
+        
+        auto palette = uniqueColors
+            .map!(c => c.nativeToLittleEndian.dup.take(3))
+            .join
+        ;
+        result.palette = palette.chain(repeat(cast(ubyte)0, paletteLength - palette.length)).array;
+        ubyte[] masterImage;
+        masterImage.length = texture.width * texture.height;
+        
+        foreach(index; 0 .. masterImage.length)
+            masterImage[index] = cast(ubyte)uniqueColors.countUntil(pixels[index]);
+        
+        result.mipmaps[0] = masterImage;
+        
+        foreach(mipLevel; 1 .. mipLevels)
+        {
+            auto mipDenom = 2 ^^ mipLevel;
+            uint width = texture.width / mipDenom;
+            uint height = texture.height / mipDenom;
+            ubyte[] mipmap;
+            mipmap.length = width * height;
+            
+            foreach(index; 0 .. mipmap.length)
+            {
+                uint x = index % width;
+                uint y = index / width;
+                uint masterX = x * texture.width / width;
+                uint masterY = y * texture.height / height;
+                mipmap[index] = masterImage[masterY * texture.width + masterX];
+            }
+            
+            result.mipmaps[mipLevel] = mipmap;
+        }
+        
+        newTextures ~= result;
     }
     
     void write(string filename)
@@ -130,6 +175,12 @@ struct TextureLump
     uint width;
     uint height;
     uint[mipLevels] offsets;
+}
+
+struct TextureMipmaps
+{
+    ubyte[][mipLevels] mipmaps;
+    ubyte[paletteLength] palette;
 }
 
 struct Texture
