@@ -15,6 +15,7 @@ import std.file: mkdir, exists, readFile = read;
 
 import imageformats;
 
+static immutable magicNumber = "WAD3";
 enum textureNameLength = 16;
 enum mipLevels = 4;
 
@@ -29,7 +30,7 @@ struct WadFile
         data = cast(ubyte[])readFile("halflife.wad");
         header = data.unpack!Header;
         
-        if(header.magicNumber != "WAD3")
+        if(header.magicNumber != magicNumber)
             throw new Exception("Invalid wad");
         
         files.reserve(header.fileCount);
