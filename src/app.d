@@ -11,7 +11,7 @@ import std.range;
 import std.stdio;
 import std.string;
 import std.traits;
-import std.file: mkdir, exists, readFile = read;
+import std.file: mkdir, exists, readFile = read, writeFile = write;
 
 import imageformats;
 
@@ -19,6 +19,7 @@ static immutable magicNumber = "WAD3";
 enum textureNameLength = 16;
 enum mipLevels = 4;
 enum paletteLength = 3 * 256;
+enum typeMiptex = 67;
 
 struct WadFile
 {
@@ -147,7 +148,63 @@ struct WadFile
     
     void write(string filename)
     {
-        //TODO
+        auto buffer = appender!(ubyte[]);
+        auto files = appender!(DirectoryEntry[]);
+        auto header = Header(magicNumber[0 .. 4], newTextures.length, -1);
+        size_t bufferIndex = packedSize!Header;
+        
+        foreach(texture; newTextures)
+        {
+            TextureLump lump;
+            lump.name = "derp"; //FIXME
+            lump.width = -1; //FIXME
+            lump.height = -1; //FIXME
+            
+            foreach(mipLevel; 0 .. mipLevels)
+                lump.offsets[mipLevel] =
+                    packedSize!TextureLump +
+                    texture.mipmaps[0 .. mipLevel]
+                        .map!(x => x.length)
+                        .sum
+                ;
+            
+            DirectoryEntry file;
+            file.offset = bufferIndex;
+            file.type = typeMiptex;
+            file.compressed = false;
+            file.name = "derp"; //FIXME
+            
+            buffer.put(lump.pack);
+            
+            bufferIndex += packedSize!TextureLump;
+            
+            foreach(mipLevel; 0 .. mipLevels)
+            {
+                auto mipmap = texture.mipmaps[mipLevel];
+                bufferIndex += mipmap.length;
+                
+                buffer.put(mipmap);
+            }
+            
+            buffer.put(cast(ubyte[])[0, 0]); //padding
+            buffer.put(texture.palette[0 .. $]);
+            
+            bufferIndex += 2 + paletteLength;
+            file.diskSize = file.fullSize = bufferIndex - file.offset;
+            
+            files.put(file);
+        }
+        
+        header.fileOffset = bufferIndex;
+        
+        foreach(file; files.data)
+            buffer.put(file.pack);
+        
+        auto finalBuffer = appender!(ubyte[]);
+        
+        finalBuffer.put(header.pack);
+        finalBuffer.put(buffer.data);
+        writeFile(filename, finalBuffer.data);
     }
 }
 
@@ -237,6 +294,32 @@ Type unpack(Type)(const(ubyte[]) data)
         else
         {
             mixin("result." ~ fieldName) = data[index .. $].peek!(FieldType, Endian.littleEndian);
+            index += FieldType.sizeof;
+        }
+    }
+    
+    return result;
+}
+
+ubyte[] pack(Type)(Type data)
+{
+    ubyte[] result;
+    result.length = packedSize!Type;
+    size_t index;
+    
+    foreach(fieldName; __traits(allMembers, Type))
+    {
+        alias FieldType = typeof(mixin("Type." ~ fieldName));
+        
+        static if(isStaticArray!FieldType)
+            foreach(item; mixin("data." ~ fieldName))
+            {
+                result[index .. index + item.sizeof] = nativeToLittleEndian(item);
+                index += item.sizeof;
+            }
+        else
+        {
+            result[index .. index + FieldType.sizeof] = nativeToLittleEndian(mixin("data." ~ fieldName));
             index += FieldType.sizeof;
         }
     }
