@@ -113,15 +113,27 @@ struct WadFile
             .uniq
             .array
         ;
+        bool hasAlpha = name.startsWith("{");
         
         if(uniqueColors.length > 256)
             throw new Exception("Texture `%s` has too many colors".format(name)); //TODO: quantization
         
-        auto palette = uniqueColors
+        uniqueColors.length = 256;
+        
+        if(hasAlpha) //ensure alpha color is at the end of the palette
+        {
+            auto alphaColorIndex = uniqueColors.countUntil(0x00FF0000);
+            
+            if(alphaColorIndex == -1)
+                throw new Exception("Transparent texture doesn't actually have any transparent color!?");
+            
+            swap(uniqueColors[alphaColorIndex], uniqueColors[$ - 1]);
+        }
+        
+        result.palette = uniqueColors
             .map!(c => c.nativeToLittleEndian.dup.take(3))
             .join
         ;
-        result.palette = palette.chain(repeat(cast(ubyte)0, paletteLength - palette.length)).array;
         ubyte[] masterImage;
         masterImage.length = texture.width * texture.height;
         
