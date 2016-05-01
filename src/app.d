@@ -38,7 +38,12 @@ struct WadFile
         foreach(fileNum; 0 .. header.fileCount)
         {
             size_t index = header.fileOffset + fileNum * packedSize!DirectoryEntry;
-            files ~= unpack!DirectoryEntry(data[index .. $]);
+            DirectoryEntry file = unpack!DirectoryEntry(data[index .. $]);
+            
+            if(file.compressed)
+                throw new Exception("File %s is compressed (unsupported)".format(file.name.ptr.fromStringz));
+            
+            files ~= file;
         }
     }
     
