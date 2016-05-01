@@ -94,6 +94,16 @@ struct WadFile
         
         return result;
     }
+    
+    void add(Texture texture)
+    {
+        //TODO
+    }
+    
+    void write(string filename)
+    {
+        //TODO
+    }
 }
 
 struct Header
@@ -131,15 +141,31 @@ struct Texture
 
 void main()
 {
-    auto wad = WadFile("halflife.wad");
+    auto wadName = "halflife";
+    auto textures = ["{FENCE", "+0RECHARGE"];
+    auto wad = WadFile("%s.wad".format(wadName));
     
-    if(!"halflife".exists)
-        mkdir("halflife");
+    if(!wadName.exists)
+        mkdir(wadName);
     
-    auto filename = "{FENCE";
-    auto texture = wad.readTexture(wad.findFile(filename));
+    foreach(filename; textures)
+    {
+        auto texture = wad.readTexture(wad.findFile(filename));
+        
+        write_image("%s/%s.png".format(wadName, filename), texture.width, texture.height, texture.pixels, ColFmt.RGBA);
+    }
     
-    write_image("halflife/%s.png".format(filename), texture.width, texture.height, texture.pixels, ColFmt.RGBA);
+    wad = WadFile.init;
+    
+    foreach(filename; textures)
+    {
+        auto img = read_image("%s/%s.png".format(wadName, filename), ColFmt.RGBA);
+        auto texture = Texture(img.w, img.h, img.pixels);
+        
+        wad.add(texture);
+    }
+    
+    wad.write("test.wad");
 }
 
 Type unpack(Type)(const(ubyte[]) data)
