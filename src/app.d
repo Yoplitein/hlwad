@@ -99,8 +99,8 @@ struct WadFile
     
     void add(Texture texture, string name)
     {
-        if(name.length > 16)
-            throw new Exception("Can't add texture `%s`: name is more than 16 chars".format(name));
+        if(name.length > textureNameLength - 1) //includes terminator
+            throw new Exception("Can't add texture `%s`: name is more than 15 chars".format(name));
         
         PackedTexture result;
         result.width = texture.width;
