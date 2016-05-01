@@ -65,18 +65,9 @@ void main()
     if(!"halflife".exists)
         mkdir("halflife");
     
-    int count;
-    
     foreach(file; files)
     {
         auto texture = unpack!TextureLump(data[file.offset .. $]);
-        
-        if(texture.width < 128)
-            continue;
-        
-        if(count++ > 10)
-            break;
-        
         auto filename = file.name.to!string.stripRight('\0');
         
         writefln(
@@ -106,6 +97,9 @@ void main()
         ;
         uint[] output;
         output.length = imageLength;
+        
+        if(filename.startsWith("{")) //has transparency
+            palette[$ - 1] &= 0x00FFFFFF;
         
         foreach(index, colorIndex; image)
             output[index] = palette[colorIndex];
