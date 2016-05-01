@@ -108,6 +108,7 @@ struct WadFile
         result.name = name;
         uint[] pixels = cast(uint[])texture.pixels;
         uint[] uniqueColors = pixels
+            .dup
             .sort!()
             .uniq
             .array
