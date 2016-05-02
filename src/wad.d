@@ -22,7 +22,12 @@ struct WadFile
     
     this(string filename)
     {
-        data = cast(ubyte[])readFile(filename);
+        this(cast(ubyte[])readFile(filename));
+    }
+    
+    this(ubyte[] data)
+    {
+        this.data = data;
         header = data.unpack!Header;
         
         if(header.magicNumber != magicNumber)
