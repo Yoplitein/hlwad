@@ -1,14 +1,8 @@
-import std.algorithm;
-import std.array;
-import std.bitmanip;
-import std.conv;
+import std.file: mkdir, exists;
 import std.getopt;
 import std.path;
-import std.range;
 import std.stdio;
 import std.string;
-import std.traits;
-import std.file: mkdir, exists, readFile = read, writeFile = write;
 
 import imageformats;
 
@@ -16,29 +10,23 @@ import wad;
 
 void main()
 {
-    auto wadName = "halflife";
-    auto textures = ["{FENCE", "+0RECHARGE"];
-    auto wad = WadFile("%s.wad".format(wadName));
+}
+
+void writeImage(string filename, Texture texture)
+{
+    write_image(filename, texture.width, texture.height, texture.pixels, ColFmt.RGBA);
+}
+
+Texture readImage(string filename)
+{
+    IFImage img;
     
-    if(!wadName.exists)
-        mkdir(wadName);
-    
-    foreach(filename; textures)
+    try
+        img = read_image(filename, ColFmt.RGBA);
+    catch(ImageIOException err)
     {
-        auto texture = wad.readTexture(wad.findFile(filename));
-        
-        write_image("%s/%s.png".format(wadName, filename), texture.width, texture.height, texture.pixels, ColFmt.RGBA);
+        throw new Exception("Failed to read image `%s`: %s".format(filename, err.msg));
     }
     
-    wad = WadFile.init;
-    
-    foreach(filename; textures)
-    {
-        auto img = read_image("%s/%s.png".format(wadName, filename), ColFmt.RGBA);
-        auto texture = Texture(img.w, img.h, img.pixels);
-        
-        wad.add(texture, filename);
-    }
-    
-    wad.write("test.wad");
+    return Texture(img.w, img.h, img.pixels);
 }
