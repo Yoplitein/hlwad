@@ -1,10 +1,17 @@
 module wad;
 
-static immutable magicNumber = "WAD3";
-enum textureNameLength = 16;
-enum mipLevels = 4;
-enum paletteLength = 3 * 256;
-enum typeMiptex = 67;
+import std.algorithm;
+import std.bitmanip;
+import std.file: readFile = read, writeFile = write;
+import std.range;
+import std.string;
+import std.traits;
+
+private static immutable magicNumber = "WAD3";
+private enum textureNameLength = 16;
+private enum mipLevels = 4;
+private enum paletteLength = 3 * 256;
+private enum typeMiptex = 67;
 
 struct WadFile
 {
@@ -15,7 +22,7 @@ struct WadFile
     
     this(string filename)
     {
-        data = cast(ubyte[])readFile("halflife.wad");
+        data = cast(ubyte[])readFile(filename);
         header = data.unpack!Header;
         
         if(header.magicNumber != magicNumber)
@@ -51,7 +58,7 @@ struct WadFile
         auto texture = unpack!TextureLump(data[file.offset .. $]);
         result.width = texture.width;
         result.height = texture.height;
-        auto filename = file.name.to!string.stripRight('\0');
+        auto filename = file.name.ptr.fromStringz;
         auto imageLength = texture.width * texture.height;
         auto smallestMipmapLength = (texture.width / 8) * (texture.height / 8);
         auto imageStart = file.offset + texture.offsets[0];
@@ -254,7 +261,7 @@ struct Texture
     ubyte[] pixels;
 }
 
-Type unpack(Type)(const(ubyte[]) data)
+private Type unpack(Type)(const(ubyte[]) data)
 {
     Type result;
     size_t index;
@@ -279,7 +286,7 @@ Type unpack(Type)(const(ubyte[]) data)
     return result;
 }
 
-ubyte[] pack(Type)(Type data)
+private ubyte[] pack(Type)(Type data)
 {
     ubyte[] result;
     result.length = packedSize!Type;
@@ -305,7 +312,7 @@ ubyte[] pack(Type)(Type data)
     return result;
 }
 
-size_t packedSize(Type)()
+private size_t packedSize(Type)()
 {
     size_t result;
     
