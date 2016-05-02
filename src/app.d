@@ -116,7 +116,7 @@ struct WadFile
         bool hasAlpha = name.startsWith("{");
         
         if(uniqueColors.length > 256)
-            throw new Exception("Texture `%s` has too many colors".format(name)); //TODO: quantization
+            throw new Exception("Texture `%s` has too many colors (%s)".format(name, uniqueColors.length)); //TODO: quantization
         
         uniqueColors.length = 256;
         
