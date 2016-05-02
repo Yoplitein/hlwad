@@ -1,6 +1,7 @@
 import std.file: mkdir, exists;
 import std.getopt;
 import std.path;
+import std.range;
 import std.stdio;
 import std.string;
 
@@ -21,6 +22,8 @@ int main(string[] args)
         "x|extract", "Extract textures from a wad file.", &doExtract,
         "c|create", "Create a wad file.", &doCreate,
     );
+    
+    args = args[1 .. $];
     
     try
     {
@@ -53,7 +56,7 @@ int main(string[] args)
     }
     
     defaultGetoptPrinter(
-        "hlwad <--list <wad> [search]|--extract <wad> [files]|--create <wad> <files/folders>>",
+        "hlwad <--list <wad>|--extract <wad> [files]|--create <wad> <files/folders>>",
         parsed.options,
     );
     
@@ -62,7 +65,14 @@ int main(string[] args)
 
 void list(string[] args)
 {
-    //TODO
+    if(args.length == 0)
+        throw new Exception("Usage: hlwad --list <wad>");
+    
+    string filename = args[0];
+    auto wad = WadFile(filename);
+    
+    foreach(file; wad.files)
+        writeln(file.name.ptr.fromStringz);
 }
 
 void extract(string[] args)
