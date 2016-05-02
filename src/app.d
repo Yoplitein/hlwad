@@ -1,3 +1,5 @@
+import std.algorithm;
+import std.array;
 import std.file: mkdir, exists;
 import std.getopt;
 import std.path;
@@ -77,7 +79,50 @@ void list(string[] args)
 
 void extract(string[] args)
 {
-    //TODO
+    if(args.length == 0)
+        throw new Exception("Usage: hlwad --extract <wad> [files]");
+    
+    string filename = args[0];
+    auto wad = WadFile(filename);
+    string[] fileWhitelist;
+    
+    if(args.length > 1)
+        fileWhitelist = args
+            .drop(1)
+            .map!(x => x.toLower)
+            .array
+        ;
+    
+    bool useWhitelist = !fileWhitelist.empty;
+    string foldername = filename
+        .baseName
+        .stripExtension
+    ;
+    
+    if(!foldername.exists)
+        mkdir(foldername);
+    
+    foreach(file; wad.files)
+    {
+        string name = file
+            .name
+            .ptr
+            .fromStringz
+            .toLower
+            .idup
+        ;
+        
+        if(useWhitelist && !fileWhitelist.canFind(name))
+            continue;
+        
+        Texture texture = wad.readTexture(file);
+        string outputFilename = foldername
+            .buildPath(name)
+            .setExtension(".png")
+        ;
+        
+        writeImage(outputFilename, texture);
+    }
 }
 
 void create(string[] args)
