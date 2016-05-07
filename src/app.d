@@ -1,6 +1,6 @@
 import std.algorithm;
 import std.array;
-import std.file: mkdir, exists;
+import std.file: mkdir, exists, dirEntries, SpanMode, isDir;
 import std.getopt;
 import std.path;
 import std.range;
@@ -127,7 +127,31 @@ void extract(string[] args)
 
 void create(string[] args)
 {
-    //TODO
+    if(args.length < 2)
+        throw new Exception("Usage: hlwad --create <wad> <files/folders>");
+    
+    string filename = args[0];
+    
+    //TODO: refuse to overwrite existing wads
+    
+    File(filename, "w").close(); //ensure wad can be written, before wasting time generating mipmaps etc.
+    
+    string[] includes = args.drop(1);
+    auto files = appender!(string[]);
+    WadFile wad;
+    
+    foreach(include; includes)
+    {
+        if(include.isDir)
+            files.put(dirEntries(include, "*.{png,tga,bmp,jpg,jpeg}", SpanMode.shallow));
+        else
+            files.put(include);
+    }
+    
+    foreach(file; files.data)
+        wad.add(file.readImage, file.baseName.stripExtension);
+    
+    wad.write(filename);
 }
 
 void writeImage(string filename, Texture texture)
