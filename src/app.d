@@ -161,7 +161,10 @@ void create(string[] args, bool force)
 
 void writeImage(string filename, Texture texture)
 {
-    write_image(filename, texture.width, texture.height, texture.pixels, ColFmt.RGBA);
+    try
+        write_image(filename, texture.width, texture.height, texture.pixels, ColFmt.RGBA);
+    catch(ImageIOException err)
+        throw new Exception("Failed to write image `%s`: %s".format(filename, err.msg));
 }
 
 Texture readImage(string filename)
