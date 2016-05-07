@@ -148,12 +148,10 @@ void create(string[] args, bool force)
     WadFile wad;
     
     foreach(include; includes)
-    {
         if(include.isDir)
             files.put(dirEntries(include, "*.{png,tga,bmp,jpg,jpeg}", SpanMode.shallow));
         else
             files.put(include);
-    }
     
     foreach(file; files.data)
         wad.add(file.readImage, file.baseName.stripExtension);
@@ -173,9 +171,7 @@ Texture readImage(string filename)
     try
         img = read_image(filename, ColFmt.RGBA);
     catch(ImageIOException err)
-    {
         throw new Exception("Failed to read image `%s`: %s".format(filename, err.msg));
-    }
     
     return Texture(img.w, img.h, img.pixels);
 }
