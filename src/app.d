@@ -141,7 +141,7 @@ void create(string[] args, bool force)
     if(filename.exists && !force)
         throw new Exception("Wad file `%s` already exists".format(filename));
     
-    File(filename, "w").close(); //ensure wad can be written, before wasting time generating mipmaps etc.
+    File(filename, "a").close(); //ensure wad can be written, before wasting time generating mipmaps etc.
     
     string[] includes = args.drop(1);
     auto files = appender!(string[]);
