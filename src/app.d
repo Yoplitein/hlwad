@@ -16,6 +16,7 @@ int main(string[] args)
     bool doList;
     bool doExtract;
     bool doCreate;
+    bool force;
     
     auto parsed = args.getopt(
         config.bundling,
@@ -23,6 +24,7 @@ int main(string[] args)
         "l|list", "List textures in a wad file.", &doList,
         "x|extract", "Extract textures from a wad file.", &doExtract,
         "c|create", "Create a wad file.", &doCreate,
+        "f|force", "Allow overwriting of files.", &force,
     );
     
     args = args[1 .. $];
@@ -38,14 +40,14 @@ int main(string[] args)
         
         if(doExtract)
         {
-            extract(args);
+            extract(args, force);
             
             return 0;
         }
         
         if(doCreate)
         {
-            create(args);
+            create(args, force);
             
             return 0;
         }
@@ -77,7 +79,7 @@ void list(string[] args)
         writeln(file.name.ptr.fromStringz);
 }
 
-void extract(string[] args)
+void extract(string[] args, bool force)
 {
     if(args.length == 0)
         throw new Exception("Usage: hlwad --extract <wad> [files]");
@@ -115,24 +117,29 @@ void extract(string[] args)
         if(useWhitelist && !fileWhitelist.canFind(name))
             continue;
         
-        Texture texture = wad.readTexture(file);
         string outputFilename = foldername
             .buildPath(name)
             .setExtension(".png")
         ;
         
+        if(outputFilename.exists && !force)
+            throw new Exception("File `%s` already exists".format(outputFilename));
+        
+        Texture texture = wad.readTexture(file);
+        
         writeImage(outputFilename, texture);
     }
 }
 
-void create(string[] args)
+void create(string[] args, bool force)
 {
     if(args.length < 2)
         throw new Exception("Usage: hlwad --create <wad> <files/folders>");
     
     string filename = args[0];
     
-    //TODO: refuse to overwrite existing wads
+    if(filename.exists && !force)
+        throw new Exception("Wad file `%s` already exists".format(filename));
     
     File(filename, "w").close(); //ensure wad can be written, before wasting time generating mipmaps etc.
     
