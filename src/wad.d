@@ -37,7 +37,7 @@ struct WadFile
     
         foreach(fileNum; 0 .. header.fileCount)
         {
-            size_t index = header.fileOffset + fileNum * packedSize!DirectoryEntry;
+            uint index = header.fileOffset + fileNum * packedSize!DirectoryEntry;
             DirectoryEntry file = unpack!DirectoryEntry(data[index .. $]);
             
             if(file.compressed)
@@ -147,7 +147,7 @@ struct WadFile
             ubyte[] mipmap;
             mipmap.length = width * height;
             
-            foreach(index; 0 .. mipmap.length)
+            foreach(index; 0 .. cast(uint)mipmap.length)
             {
                 uint x = index % width;
                 uint y = index / width;
@@ -166,8 +166,8 @@ struct WadFile
     {
         auto buffer = appender!(ubyte[]);
         auto files = appender!(DirectoryEntry[]);
-        auto header = Header(magicNumber[0 .. 4], newTextures.length, -1);
-        size_t bufferIndex = packedSize!Header;
+        auto header = Header(magicNumber[0 .. 4], cast(int)newTextures.length, -1);
+        uint bufferIndex = packedSize!Header;
         
         foreach(texture; newTextures)
         {
@@ -180,7 +180,7 @@ struct WadFile
                 lump.offsets[mipLevel] =
                     packedSize!TextureLump +
                     texture.mipmaps[0 .. mipLevel]
-                        .map!(x => x.length)
+                        .map!(x => cast(uint)x.length)
                         .sum
                 ;
             
@@ -269,7 +269,7 @@ struct Texture
 private Type unpack(Type)(const(ubyte[]) data)
 {
     Type result;
-    size_t index;
+    uint index;
     
     foreach(fieldName; __traits(allMembers, Type))
     {
@@ -295,7 +295,7 @@ private ubyte[] pack(Type)(Type data)
 {
     ubyte[] result;
     result.length = packedSize!Type;
-    size_t index;
+    uint index;
     
     foreach(fieldName; __traits(allMembers, Type))
     {
@@ -317,9 +317,9 @@ private ubyte[] pack(Type)(Type data)
     return result;
 }
 
-private size_t packedSize(Type)()
+private uint packedSize(Type)()
 {
-    size_t result;
+    uint result;
     
     foreach(fieldName; __traits(allMembers, Type))
         result += mixin("Type." ~ fieldName).sizeof;
